@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { supabase } from "@/lib/supabase"
 
 export default function CheckInPage() {
   const [phone, setPhone] = useState("")
@@ -13,25 +14,45 @@ export default function CheckInPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const lastDigit = parseInt(phone.slice(-1))
+    const { data: employee, error } = await supabase
+      .from("employees")
+      .select("*")
+      .eq("phone", phone)
+      .single()
+    console.log("Fetched employee:", employee)
+    console.error("Supabase error:", error)
 
-    if (isNaN(lastDigit)) {
-      toast.error("Invalid phone number")
-      return
-    }
-
-    if (lastDigit <= 4) {
-      // Employee
-      const now = new Date().toLocaleString()
-      toast.success(`Employee check-in logged at ${now}`)
-      // TODO: POST to backend log endpoint
-    } else {
-      // Visitor
+    if (error || !employee) {
+      // Not an employee
       toast.info("Redirecting to visitor registration...")
       setTimeout(() => {
         router.push("/visitor/register")
-      }, 1000)
+      }, 2000)
+      return
     }
+
+    // It's an employee — log check-in
+    const now = new Date()
+    const date = now.toISOString().split("T")[0]
+    const time = now.toTimeString().split(" ")[0]
+
+    const { error: insertError } = await supabase
+      .from("employee_checkins")
+      .insert([
+        {
+          employee_id: employee.id,
+          checkin_date: date,
+          checkin_time: time,
+        },
+      ])
+
+    if (insertError) {
+      toast.error("Failed to log check-in.")
+      return
+    }
+
+    toast.success(`Employee check-in logged at ${time}`)
+    setPhone("")
   }
 
   return (
