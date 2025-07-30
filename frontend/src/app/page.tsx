@@ -12,7 +12,7 @@ export default function HomePage() {
           <Button>Check-In</Button>
         </Link>
 
-        <Link href="/admin/login">
+        <Link href="/admin">
           <Button variant="outline">Admin Login</Button>
         </Link>
       </div>

@@ -1,75 +1,71 @@
-'use client'
+'use client';
+import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
-import { supabase } from "@/lib/supabase"
+type Employee = {
+  id: number;
+  name: string;
+};
 
-export default function CheckInPage() {
-  const [phone, setPhone] = useState("")
-  const router = useRouter()
+export default function EmployeeCheckin() {
+  const [phone, setPhone] = useState<string>('');
+  const [message, setMessage] = useState<string>('');
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCheckin = async () => {
+    setMessage('');
 
-    const { data: employee, error } = await supabase
-      .from("employees")
-      .select("*")
-      .eq("phone", phone)
-      .single()
-    console.log("Fetched employee:", employee)
-    console.error("Supabase error:", error)
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select('id, name')
+      .eq('phone', phone)
+      .single<Employee>();
 
-    if (error || !employee) {
-      // Not an employee
-      toast.info("Redirecting to visitor registration...")
-      setTimeout(() => {
-        router.push("/visitor/register")
-      }, 2000)
-      return
+    if (empError || !employee) {
+      router.push(`/visitor?phone=${encodeURIComponent(phone)}`);
+      return;
     }
 
-    // It's an employee — log check-in
-    const now = new Date()
-    const date = now.toISOString().split("T")[0]
-    const time = now.toTimeString().split(" ")[0]
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0];
 
-    const { error: insertError } = await supabase
-      .from("employee_checkins")
-      .insert([
-        {
-          employee_id: employee.id,
-          checkin_date: date,
-          checkin_time: time,
-        },
-      ])
+    const { error: checkinError } = await supabase.from('employee_checkins').insert({
+      employee_id: employee.id,
+      employee_name: employee.name,
+      checkin_date: dateStr,
+      checkin_time: timeStr,
+    });
 
-    if (insertError) {
-      toast.error("Failed to log check-in.")
-      return
+    if (checkinError) {
+      console.error(checkinError);
+      setMessage('Check-in failed');
+    } else {
+      setMessage(`Welcome ${employee.name}, Check-In Successful`);
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      router.push('/');
     }
-
-    toast.success(`Employee check-in logged at ${time}`)
-    setPhone("")
-  }
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
-      <h1 className="text-2xl font-bold mb-6">Check-In Portal</h1>
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <Input
-          type="tel"
-          placeholder="Enter phone number"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          required
-        />
-        <Button type="submit" className="w-full">
-          Check In
-        </Button>
-      </form>
+    <div className="p-4 max-w-md mx-auto">
+      <h1 className="text-xl font-bold mb-4">Check-In</h1>
+      <input
+        type="tel"
+        placeholder="Enter Phone Number"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        className="border px-3 py-2 w-full mb-3"
+      />
+      <button
+        onClick={handleCheckin}
+        className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+      >
+        Check In
+      </button>
+      {message && <p className="mt-3 text-center">{message}</p>}
     </div>
-  )
+  );
 }
