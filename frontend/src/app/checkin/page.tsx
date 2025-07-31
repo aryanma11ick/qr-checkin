@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
 
 type Employee = {
   id: number;
@@ -43,7 +44,6 @@ export default function EmployeeCheckin() {
       setMessage('Check-in failed');
     } else {
       setMessage(`Welcome ${employee.name}, Check-In Successful`);
-      
       await new Promise(resolve => setTimeout(resolve, 2000));
       router.push('/');
     }
@@ -59,12 +59,12 @@ export default function EmployeeCheckin() {
         onChange={(e) => setPhone(e.target.value)}
         className="border px-3 py-2 w-full mb-3"
       />
-      <button
+      <Button
         onClick={handleCheckin}
-        className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+        className="w-full"
       >
         Check In
-      </button>
+      </Button>
       {message && <p className="mt-3 text-center">{message}</p>}
     </div>
   );

@@ -64,8 +64,8 @@ export default function AdminPage() {
           <table className="w-full border text-sm">
             <thead>
               <tr className="bg-gray-100">
+              <th className="p-2 border">Employee ID</th>
                 <th className="p-2 border">Employee Name</th>
-                <th className="p-2 border">Employee ID</th>
                 <th className="p-2 border">Date</th>
                 <th className="p-2 border">Time</th>
               </tr>
@@ -73,8 +73,8 @@ export default function AdminPage() {
             <tbody>
               {checkins.map((c, idx) => (
                 <tr key={idx} className="border-t">
-                  <td className="p-2 border">{c.employee_name}</td>
                   <td className="p-2 border">{c.employee_id}</td>
+                  <td className="p-2 border">{c.employee_name}</td>
                   <td className="p-2 border">{c.checkin_date}</td>
                   <td className="p-2 border">{c.checkin_time}</td>
                 </tr>
