@@ -10,7 +10,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState('checkins');
 
   const [checkins, setCheckins] = useState<
-  { employee_id: string; checkin_date: string; checkin_time: string; employee_name: string }[]
+  { employee_id: string; checkin_date: string; checkin_time: string; employee_name: string; employee_phone: string}[]
   >([]);
 
   const [visitors, setVisitors] = useState<
@@ -29,12 +29,31 @@ export default function AdminPage() {
   }, []);
 
   const fetchCheckins = async () => {
-    const { data, error } = await supabase
-      .from('employee_checkins')
-      .select('employee_id, checkin_date, checkin_time, employee_name');
+  const { data, error } = await supabase
+    .from('employee_checkins')
+    .select(`
+      employee_id,
+      checkin_date,
+      checkin_time,
+      employees (
+        name,
+        phone
+      )
+    `);
 
-    if (!error) setCheckins(data);
-  };
+  if (!error && data) {
+    const formatted = data.map((entry) => ({
+      employee_id: entry.employee_id,
+      employee_name: entry.employees?.name ?? 'Unknown',
+      employee_phone: entry.employees?.phone ?? 'N/A',
+      checkin_date: entry.checkin_date,
+      checkin_time: entry.checkin_time,
+    }));
+
+    setCheckins(formatted);
+  }
+};
+
 
   const fetchVisitors = async () => {
     const { data, error } = await supabase.from('visitors').select('*');
@@ -71,6 +90,7 @@ export default function AdminPage() {
               <tr className="bg-gray-100">
               <th className="p-2 border">Employee ID</th>
                 <th className="p-2 border">Employee Name</th>
+                <th className='p-2 border'>Phone</th>
                 <th className="p-2 border">Date</th>
                 <th className="p-2 border">Time</th>
               </tr>
@@ -80,6 +100,7 @@ export default function AdminPage() {
                 <tr key={idx} className="border-t">
                   <td className="p-2 border">{c.employee_id}</td>
                   <td className="p-2 border">{c.employee_name}</td>
+                  <td className="p-2 border">{c.employee_phone}</td>
                   <td className="p-2 border">{c.checkin_date}</td>
                   <td className="p-2 border">{c.checkin_time}</td>
                 </tr>
