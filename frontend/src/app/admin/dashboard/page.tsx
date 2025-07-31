@@ -10,63 +10,85 @@ export default function AdminPage() {
   const [tab, setTab] = useState('checkins');
 
   const [checkins, setCheckins] = useState<
-  { employee_id: string; checkin_date: string; checkin_time: string; employee_name: string; employee_phone: string}[]
+    {
+      employee_id: string;
+      checkin_date: string;
+      checkin_time: string;
+      employee_name: string;
+      employee_phone: string;
+    }[]
   >([]);
 
   const [visitors, setVisitors] = useState<
-  { name: string; phone: string; whom_to_meet: string; purpose: string; checkin_date: string; checkin_time: string }[]
+    {
+      name: string;
+      phone: string;
+      whom_to_meet: string;
+      purpose: string;
+      checkin_date: string;
+      checkin_time: string;
+    }[]
   >([]);
+
   const [employeeForm, setEmployeeForm] = useState({
     name: '',
     phone: '',
     email: '',
   });
 
-  // Load data
+  // Fetch data on load
   useEffect(() => {
     fetchCheckins();
     fetchVisitors();
   }, []);
 
   const fetchCheckins = async () => {
-  const { data, error } = await supabase
-    .from('employee_checkins')
-    .select(`
-      employee_id,
-      checkin_date,
-      checkin_time,
-      employees (
-        name,
-        phone
-      )
-    `);
+    const { data, error } = await supabase
+      .from('employee_checkins')
+      .select(`
+        employee_id,
+        checkin_date,
+        checkin_time,
+        employees (
+          name,
+          phone
+        )
+      `);
 
-  if (!error && data) {
-    const formatted = data.map((entry) => ({
-      employee_id: entry.employee_id,
-      employee_name: entry.employees?.name ?? 'Unknown',
-      employee_phone: entry.employees?.phone ?? 'N/A',
-      checkin_date: entry.checkin_date,
-      checkin_time: entry.checkin_time,
-    }));
+    if (!error && data) {
+      const formatted = data.map((entry) => ({
+        employee_id: entry.employee_id,
+        employee_name: (entry as any).employees?.name ?? 'Unknown',
+        employee_phone: (entry as any).employees?.phone ?? 'N/A',
+        checkin_date: entry.checkin_date,
+        checkin_time: entry.checkin_time,
+      }));
 
-    setCheckins(formatted);
-  }
-};
-
+      setCheckins(formatted);
+    } else {
+      console.error('Error fetching check-ins:', error);
+    }
+  };
 
   const fetchVisitors = async () => {
     const { data, error } = await supabase.from('visitors').select('*');
-    if (!error) setVisitors(data);
+    if (!error && data) {
+      setVisitors(data);
+    } else {
+      console.error('Error fetching visitors:', error);
+    }
   };
 
   const handleAddEmployee = async () => {
     const { name, phone, email } = employeeForm;
     const { error } = await supabase.from('employees').insert([{ name, phone, email }]);
+
     if (!error) {
       alert('Employee added!');
       setEmployeeForm({ name: '', phone: '', email: '' });
+      fetchCheckins(); // refresh data
     } else {
+      console.error('Add employee failed:', error);
       alert('Failed to add employee');
     }
   };
@@ -75,12 +97,15 @@ export default function AdminPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <Button variant="outline" onClick={async () => {
+        <Button
+          variant="outline"
+          onClick={async () => {
             await supabase.auth.signOut();
             window.location.href = '/';
-            }}>
-            Logout
-            </Button>
+          }}
+        >
+          Logout
+        </Button>
       </div>
 
       <Tabs defaultValue={tab} onValueChange={setTab} className="w-full">
@@ -96,9 +121,9 @@ export default function AdminPage() {
           <table className="w-full border text-sm">
             <thead>
               <tr className="bg-gray-100">
-              <th className="p-2 border">Employee ID</th>
+                <th className="p-2 border">Employee ID</th>
                 <th className="p-2 border">Employee Name</th>
-                <th className='p-2 border'>Phone</th>
+                <th className="p-2 border">Phone</th>
                 <th className="p-2 border">Date</th>
                 <th className="p-2 border">Time</th>
               </tr>
@@ -153,17 +178,23 @@ export default function AdminPage() {
             <Input
               placeholder="Name"
               value={employeeForm.name}
-              onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
+              onChange={(e) =>
+                setEmployeeForm({ ...employeeForm, name: e.target.value })
+              }
             />
             <Input
               placeholder="Phone"
               value={employeeForm.phone}
-              onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })}
+              onChange={(e) =>
+                setEmployeeForm({ ...employeeForm, phone: e.target.value })
+              }
             />
             <Input
               placeholder="Email"
               value={employeeForm.email}
-              onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })}
+              onChange={(e) =>
+                setEmployeeForm({ ...employeeForm, email: e.target.value })
+              }
             />
             <Button onClick={handleAddEmployee}>Add Employee</Button>
           </div>
