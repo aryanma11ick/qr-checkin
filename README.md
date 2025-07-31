@@ -1,7 +1,7 @@
-## ExploreIT QR based Check-In App
+## ExploreIT QR Check-In App
 
 
-### Tech Stack:
+### Tech Stack we used:
 
 * **Frontend:** React + TailwindCSS + React Router
 * **Backend:** Supabase (PostgreSQL + Auth + JS SDK)
@@ -12,7 +12,7 @@
 
 ### Project Timeline:
 
-| Week                                    | Deadlines                 | Tasks                                                   |
+| Week:                                   | Deadlines:                | Tasks:                                                  |
 | --------------------------------------- | ------------------------- | ------------------------------------------------------- |
 | Week 1                                  | 28th July to 31st July    | Finalize basic UI with React and Tailwind.              |
 |                                         |                           | Set up database structure on Supabase.                  |
