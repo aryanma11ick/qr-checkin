@@ -9,8 +9,13 @@ import { Button } from '@/components/ui/button';
 export default function AdminPage() {
   const [tab, setTab] = useState('checkins');
 
-  const [checkins, setCheckins] = useState<any[]>([]);
-  const [visitors, setVisitors] = useState<any[]>([]);
+  const [checkins, setCheckins] = useState<
+  { employee_id: string; checkin_date: string; checkin_time: string; employee_name: string }[]
+  >([]);
+
+  const [visitors, setVisitors] = useState<
+  { name: string; phone: string; whom_to_meet: string; purpose: string; checkin_date: string; checkin_time: string }[]
+  >([]);
   const [employeeForm, setEmployeeForm] = useState({
     name: '',
     phone: '',
