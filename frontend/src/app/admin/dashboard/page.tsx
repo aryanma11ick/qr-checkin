@@ -73,7 +73,15 @@ export default function AdminPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <Button variant="outline" onClick={async () => {
+            await supabase.auth.signOut();
+            window.location.href = '/';
+            }}>
+            Logout
+            </Button>
+      </div>
 
       <Tabs defaultValue={tab} onValueChange={setTab} className="w-full">
         <TabsList className="mb-6">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { Button } from "@/components/ui/button";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -49,9 +50,9 @@ export default function AdminLoginPage() {
           required
         />
 
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+        <Button type="submit" className="w-full">
           Login
-        </button>
+        </Button>
       </form>
     </div>
   );
