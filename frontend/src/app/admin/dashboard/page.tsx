@@ -58,8 +58,8 @@ export default function Page() {
           employee_id: entry.employee_id,
           checkin_date: entry.checkin_date,
           checkin_time: entry.checkin_time,
-          employee_name: entry.employees?.[0]?.name ?? 'Unknown',
-          employee_phone: entry.employees?.[0]?.phone ?? 'Unknown',
+          employee_name: entry.employees?.name ?? 'Unknown',
+          employee_phone: entry.employees?.phone ?? 'Unknown',
         }));
         setCheckins(formatted);
       }
