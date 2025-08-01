@@ -14,164 +14,153 @@ type Employee = {
   email: string;
 };
 
-type Checkin = {
+type CheckinRaw = {
   id: string;
   employee_id: string;
   checkin_date: string;
   checkin_time: string;
-  employee_name: string;
-  employee_phone: string;
+  employees: {
+    name: string;
+    phone: string;
+  };
 };
 
-export default function Page() {
+type EmployeeCheckin = {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  employee_phone: string;
+  checkin_date: string;
+  checkin_time: string;
+};
+
+type Visitor = {
+  id: string;
+  name: string;
+  phone: string;
+  whom_to_meet: string;
+  purpose: string;
+  checkin_date: string;
+  checkin_time: string;
+};
+
+export default function AdminDashboard() {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [checkins, setCheckins] = useState<Checkin[]>([]);
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
-  const [visitorName, setVisitorName] = useState('');
+  const [checkins, setCheckins] = useState<EmployeeCheckin[]>([]);
+  const [visitors, setVisitors] = useState<Visitor[]>([]);
+  const [search, setSearch] = useState('');
 
-  // Fetch employees
   useEffect(() => {
-    const fetchEmployees = async () => {
-      const { data, error } = await supabase.from('employees').select('*');
-      if (error) {
-        toast.error('Error fetching employees');
-      } else {
-        setEmployees(data);
-      }
-    };
-    fetchEmployees();
-  }, []);
+    const fetchData = async () => {
+      const { data: empData, error: empErr } = await supabase.from('employees').select('*');
+      if (!empErr) setEmployees(empData as Employee[]);
 
-  // Fetch check-ins with employee info
-  useEffect(() => {
-    const fetchCheckins = async () => {
-      const { data, error } = await supabase
-        .from('employee_checkins')
-        .select('*, employees(name, phone)')
-        .order('checkin_date', { ascending: false });
+      const { data: checkinData, error: checkinErr } = await supabase
+        .from('checkins')
+        .select('id, employee_id, checkin_date, checkin_time, employees(name, phone)');
 
-      if (error) {
-        toast.error('Error fetching check-ins');
-      } else {
-        const formatted = data.map((entry) => ({
+      if (!checkinErr && checkinData) {
+        const formatted: EmployeeCheckin[] = checkinData.map((entry: any) => ({
           id: entry.id,
           employee_id: entry.employee_id,
-          checkin_date: entry.checkin_date,
-          checkin_time: entry.checkin_time,
           employee_name: entry.employees?.name ?? 'Unknown',
           employee_phone: entry.employees?.phone ?? 'Unknown',
+          checkin_date: entry.checkin_date,
+          checkin_time: entry.checkin_time,
         }));
         setCheckins(formatted);
       }
+
+      const { data: visitorData, error: visitorErr } = await supabase.from('visitors').select('*');
+      if (!visitorErr) setVisitors(visitorData as Visitor[]);
     };
-    fetchCheckins();
+
+    fetchData();
   }, []);
 
-  const handleCheckin = async () => {
-    if (!selectedEmployee) {
-      toast.error('Please select an employee');
-      return;
-    }
-
-    const today = new Date();
-    const checkinDate = today.toISOString().split('T')[0];
-    const checkinTime = today.toTimeString().split(' ')[0];
-
-    const { error } = await supabase.from('employee_checkins').insert({
-      employee_id: selectedEmployee,
-      checkin_date: checkinDate,
-      checkin_time: checkinTime,
-    });
-
-    if (error) {
-      toast.error('Check-in failed');
+  const handleDeleteEmployee = async (id: string) => {
+    const { error } = await supabase.from('employees').delete().eq('id', id);
+    if (!error) {
+      toast.success('Employee deleted successfully');
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
     } else {
-      toast.success('Check-in successful');
-      setSelectedEmployee('');
+      toast.error('Failed to delete employee');
     }
   };
 
+  const filteredEmployees = employees.filter((emp) =>
+    emp.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="p-6">
-      <Tabs defaultValue="checkin">
-        <TabsList className="mb-6">
-          <TabsTrigger value="checkin">Employee Check-in</TabsTrigger>
-          <TabsTrigger value="list">Employee List</TabsTrigger>
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <Tabs defaultValue="employees">
+        <TabsList>
+          <TabsTrigger value="employees">Employees</TabsTrigger>
+          <TabsTrigger value="checkins">Check-ins</TabsTrigger>
           <TabsTrigger value="visitors">Visitors</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="checkin">
-          <div className="mb-4">
-            <label className="block mb-1 text-sm font-medium">Select Employee (Phone)</label>
-            <select
-              className="w-full border p-2 rounded-md"
-              value={selectedEmployee}
-              onChange={(e) => setSelectedEmployee(e.target.value)}
-            >
-              <option value="">-- Select --</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.phone})
-                </option>
-              ))}
-            </select>
+        {/* Employees Tab */}
+        <TabsContent value="employees">
+          <div className="flex items-center gap-2 mt-4 mb-2">
+            <Input
+              placeholder="Search employee by name"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-64"
+            />
           </div>
-          <Button onClick={handleCheckin}>Check In</Button>
-
-          <h2 className="text-lg font-bold mt-8 mb-2">Check-in Records</h2>
-          <table className="w-full border mt-2">
-            <thead>
-              <tr>
-                <th className="border p-2">Name</th>
-                <th className="border p-2">Phone</th>
-                <th className="border p-2">Date</th>
-                <th className="border p-2">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {checkins.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="border p-2">{entry.employee_name}</td>
-                  <td className="border p-2">{entry.employee_phone}</td>
-                  <td className="border p-2">{entry.checkin_date}</td>
-                  <td className="border p-2">{entry.checkin_time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="space-y-2">
+            {filteredEmployees.map((emp) => (
+              <div
+                key={emp.id}
+                className="border p-4 rounded-lg flex items-center justify-between"
+              >
+                <div>
+                  <p className="font-medium">{emp.name}</p>
+                  <p className="text-sm text-gray-500">{emp.phone}</p>
+                  <p className="text-sm text-gray-500">{emp.email}</p>
+                </div>
+                <Button variant="destructive" onClick={() => handleDeleteEmployee(emp.id)}>
+                  Delete
+                </Button>
+              </div>
+            ))}
+          </div>
         </TabsContent>
 
-        <TabsContent value="list">
-          <h2 className="text-lg font-bold mb-2">All Employees</h2>
-          <table className="w-full border">
-            <thead>
-              <tr>
-                <th className="border p-2">Name</th>
-                <th className="border p-2">Phone</th>
-                <th className="border p-2">Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((emp) => (
-                <tr key={emp.id}>
-                  <td className="border p-2">{emp.name}</td>
-                  <td className="border p-2">{emp.phone}</td>
-                  <td className="border p-2">{emp.email}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Checkins Tab */}
+        <TabsContent value="checkins">
+          <div className="space-y-2 mt-4">
+            {checkins.map((c) => (
+              <div key={c.id} className="border p-4 rounded-lg">
+                <p className="font-medium">{c.employee_name}</p>
+                <p className="text-sm text-gray-500">{c.employee_phone}</p>
+                <p className="text-sm">
+                  {c.checkin_date} at {c.checkin_time}
+                </p>
+              </div>
+            ))}
+          </div>
         </TabsContent>
 
+        {/* Visitors Tab */}
         <TabsContent value="visitors">
-          <h2 className="text-lg font-bold mb-4">Visitors</h2>
-          <Input
-            placeholder="Visitor Name"
-            value={visitorName}
-            onChange={(e) => setVisitorName(e.target.value)}
-            className="mb-2"
-          />
-          <Button disabled>Submit (coming soon)</Button>
+          <div className="space-y-2 mt-4">
+            {visitors.map((v) => (
+              <div key={v.id} className="border p-4 rounded-lg">
+                <p className="font-medium">{v.name}</p>
+                <p className="text-sm text-gray-500">{v.phone}</p>
+                <p className="text-sm">
+                  {v.checkin_date} at {v.checkin_time}
+                </p>
+                <p className="text-sm text-gray-600">Whom to Meet: {v.whom_to_meet}</p>
+                <p className="text-sm text-gray-600">Purpose: {v.purpose}</p>
+              </div>
+            ))}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
