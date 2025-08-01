@@ -1,205 +1,157 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { supabase } from '@/lib/supabase'; // Ensure this uses `createClient` inside
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
-export default function AdminPage() {
-  const [tab, setTab] = useState('checkins');
+type Employee = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  created_at: string;
+};
 
-  const [checkins, setCheckins] = useState<
-    {
-      employee_id: string;
-      checkin_date: string;
-      checkin_time: string;
-      employee_name: string;
-      employee_phone: string;
-    }[]
-  >([]);
+type Visitor = {
+  id: string;
+  name: string;
+  phone: string;
+  purpose: string;
+  checkin_time: string;
+};
 
-  const [visitors, setVisitors] = useState<
-    {
-      name: string;
-      phone: string;
-      whom_to_meet: string;
-      purpose: string;
-      checkin_date: string;
-      checkin_time: string;
-    }[]
-  >([]);
+type CheckinRaw = {
+  employee_id: string;
+  checkin_date: string;
+  checkin_time: string;
+  employees: {
+    name: string;
+    phone: string;
+  }[] | null;  // Change this to an array
+};
 
-  const [employeeForm, setEmployeeForm] = useState({
-    name: '',
-    phone: '',
-    email: '',
-  });
+type EmployeeCheckin = {
+  employee_id: string;
+  employee_name: string;
+  employee_phone: string;
+  checkin_date: string;
+  checkin_time: string;
+};
 
-  // Fetch data on load
+export default function AdminDashboard() {
+  const [visitors, setVisitors] = useState<Visitor[]>([]);
+  const [checkins, setCheckins] = useState<EmployeeCheckin[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+
   useEffect(() => {
-    fetchCheckins();
-    fetchVisitors();
-  }, []);
+    const fetchData = async () => {
+      const { data: visitorData, error: visitorErr } = await supabase.from('visitors').select('*');
+      if (visitorData && !visitorErr) setVisitors(visitorData);
 
-  const fetchCheckins = async () => {
-    const { data, error } = await supabase
-      .from('employee_checkins')
-      .select(`
-        employee_id,
-        checkin_date,
-        checkin_time,
-        employees (
-          name,
-          phone
-        )
-      `);
+      const { data: checkinData, error: checkinErr } = await supabase
+        .from('employee_checkins')
+        .select('employee_id, checkin_date, checkin_time, employees(name, phone)');
 
-    if (!error && data) {
-      const formatted = data.map((entry) => ({
+      if (checkinData && !checkinErr) {
+        const formatted: EmployeeCheckin[] = checkinData.map((entry) => ({
         employee_id: entry.employee_id,
-        employee_name: (entry as any).employees?.name ?? 'Unknown',
-        employee_phone: (entry as any).employees?.phone ?? 'N/A',
+        employee_name: entry.employees?.[0]?.name ?? 'Unknown',  // Access first element of array
+        employee_phone: entry.employees?.[0]?.phone ?? 'N/A',    // Access first element of array
         checkin_date: entry.checkin_date,
         checkin_time: entry.checkin_time,
       }));
+  setCheckins(formatted);
+}
 
-      setCheckins(formatted);
-    } else {
-      console.error('Error fetching check-ins:', error);
-    }
-  };
+      const { data: employeeData, error: employeeErr } = await supabase.from('employees').select('*');
+      if (employeeData && !employeeErr) setEmployees(employeeData);
+    };
 
-  const fetchVisitors = async () => {
-    const { data, error } = await supabase.from('visitors').select('*');
-    if (!error && data) {
-      setVisitors(data);
-    } else {
-      console.error('Error fetching visitors:', error);
-    }
-  };
+    fetchData();
+  }, []);
 
   const handleAddEmployee = async () => {
-    const { name, phone, email } = employeeForm;
-    const { error } = await supabase.from('employees').insert([{ name, phone, email }]);
+    if (!name || !phone || !email) {
+      toast.error('Please fill all fields');
+      return;
+    }
 
-    if (!error) {
-      alert('Employee added!');
-      setEmployeeForm({ name: '', phone: '', email: '' });
-      fetchCheckins(); // refresh data
+    const { error } = await supabase.from('employees').insert([{ name, phone, email }]);
+    if (error) {
+      toast.error(error.message);
     } else {
-      console.error('Add employee failed:', error);
-      alert('Failed to add employee');
+      toast.success('Employee added successfully');
+      setName('');
+      setPhone('');
+      setEmail('');
+      const { data: updated } = await supabase.from('employees').select('*');
+      if (updated) setEmployees(updated);
     }
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            await supabase.auth.signOut();
-            window.location.href = '/';
-          }}
-        >
-          Logout
-        </Button>
-      </div>
-
-      <Tabs defaultValue={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="checkins">Employee Check-ins</TabsTrigger>
+    <main className="p-6">
+      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+      <Tabs defaultValue="visitors">
+        <TabsList className="mb-4">
           <TabsTrigger value="visitors">Visitors</TabsTrigger>
-          <TabsTrigger value="add">Add Employee</TabsTrigger>
+          <TabsTrigger value="checkins">Employee Check-ins</TabsTrigger>
+          <TabsTrigger value="employees">Add Employees</TabsTrigger>
         </TabsList>
-
-        {/* Check-ins Tab */}
-        <TabsContent value="checkins">
-          <h2 className="text-xl mb-2">Employee Check-ins</h2>
-          <table className="w-full border text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 border">Employee ID</th>
-                <th className="p-2 border">Employee Name</th>
-                <th className="p-2 border">Phone</th>
-                <th className="p-2 border">Date</th>
-                <th className="p-2 border">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {checkins.map((c, idx) => (
-                <tr key={idx} className="border-t">
-                  <td className="p-2 border">{c.employee_id}</td>
-                  <td className="p-2 border">{c.employee_name}</td>
-                  <td className="p-2 border">{c.employee_phone}</td>
-                  <td className="p-2 border">{c.checkin_date}</td>
-                  <td className="p-2 border">{c.checkin_time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TabsContent>
 
         {/* Visitors Tab */}
         <TabsContent value="visitors">
-          <h2 className="text-xl mb-2">Visitors</h2>
-          <table className="w-full border text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 border">Name</th>
-                <th className="p-2 border">Phone</th>
-                <th className="p-2 border">Whom to Meet</th>
-                <th className="p-2 border">Purpose</th>
-                <th className="p-2 border">Date</th>
-                <th className="p-2 border">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visitors.map((v, idx) => (
-                <tr key={idx} className="border-t">
-                  <td className="p-2 border">{v.name}</td>
-                  <td className="p-2 border">{v.phone}</td>
-                  <td className="p-2 border">{v.whom_to_meet}</td>
-                  <td className="p-2 border">{v.purpose}</td>
-                  <td className="p-2 border">{v.checkin_date}</td>
-                  <td className="p-2 border">{v.checkin_time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h2 className="text-xl font-semibold mb-2">Visitor List</h2>
+          <ul className="space-y-2">
+            {visitors.map((visitor) => (
+              <li key={visitor.id} className="border rounded p-2">
+                <strong>{visitor.name}</strong> ({visitor.phone}) – Purpose: {visitor.purpose} – Checked in at: {visitor.checkin_time}
+              </li>
+            ))}
+          </ul>
+        </TabsContent>
+
+        {/* Check-ins Tab */}
+        <TabsContent value="checkins">
+          <h2 className="text-xl font-semibold mb-2">Employee Check-ins</h2>
+          <ul className="space-y-2">
+            {checkins.map((checkin, idx) => (
+              <li key={idx} className="border rounded p-2">
+                <strong>{checkin.employee_name}</strong> (ID: {checkin.employee_id}) – {checkin.employee_phone} – {checkin.checkin_date} at {checkin.checkin_time}
+              </li>
+            ))}
+          </ul>
         </TabsContent>
 
         {/* Add Employee Tab */}
-        <TabsContent value="add">
-          <h2 className="text-xl mb-2">Add New Employee</h2>
-          <div className="space-y-4 max-w-md">
-            <Input
-              placeholder="Name"
-              value={employeeForm.name}
-              onChange={(e) =>
-                setEmployeeForm({ ...employeeForm, name: e.target.value })
-              }
-            />
-            <Input
-              placeholder="Phone"
-              value={employeeForm.phone}
-              onChange={(e) =>
-                setEmployeeForm({ ...employeeForm, phone: e.target.value })
-              }
-            />
-            <Input
-              placeholder="Email"
-              value={employeeForm.email}
-              onChange={(e) =>
-                setEmployeeForm({ ...employeeForm, email: e.target.value })
-              }
-            />
-            <Button onClick={handleAddEmployee}>Add Employee</Button>
+        <TabsContent value="employees">
+          <h2 className="text-xl font-semibold mb-4">Add Employee</h2>
+          <div className="space-y-4 max-w-sm">
+            <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Button onClick={handleAddEmployee} className="bg-blue-600 hover:bg-blue-700">
+              Add Employee
+            </Button>
           </div>
+
+          <h3 className="text-lg font-semibold mt-6">Current Employees</h3>
+          <ul className="space-y-2 mt-2">
+            {employees.map((emp) => (
+              <li key={emp.id} className="border rounded p-2">
+                {emp.name} – {emp.phone} – {emp.email}
+              </li>
+            ))}
+          </ul>
         </TabsContent>
       </Tabs>
-    </div>
+    </main>
   );
 }
