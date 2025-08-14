@@ -14,7 +14,7 @@ type Employee = {
   email: string;
 };
 
-type CheckinRaw = {
+type EmployeeCheckinRaw = {
   id: string;
   employee_id: string;
   checkin_date: string;
@@ -23,7 +23,7 @@ type CheckinRaw = {
     name: string;
     phone: string;
   };
-};
+}[];
 
 type EmployeeCheckin = {
   id: string;
@@ -56,11 +56,11 @@ export default function AdminDashboard() {
       if (!empErr) setEmployees(empData as Employee[]);
 
       const { data: checkinData, error: checkinErr } = await supabase
-        .from('checkins')
+        .from('employee_checkins')
         .select('id, employee_id, checkin_date, checkin_time, employees(name, phone)');
 
       if (!checkinErr && checkinData) {
-        const formatted: EmployeeCheckin[] = checkinData.map((entry: any) => ({
+        const formatted: EmployeeCheckin[] = (checkinData as EmployeeCheckinRaw[]).map((entry) => ({
           id: entry.id,
           employee_id: entry.employee_id,
           employee_name: entry.employees?.name ?? 'Unknown',

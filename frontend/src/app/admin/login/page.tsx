@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push('/admin/dashboard'); // change this to wherever your admin panel is
+      router.push('/admin/dashboard');
     }
   };
 
