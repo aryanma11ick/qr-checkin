@@ -138,92 +138,102 @@ export default function AdminDashboard() {
 
         {/* Employees Tab */}
         <TabsContent value="employees">
-          <div className="flex items-center gap-2 mt-4 mb-2">
-            <Input
-              placeholder="Search employee by name"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-64"
-            />
-          </div>
-          
-          {loading.employees ? (
-            <div>Loading employees...</div>
-          ) : (
-            <div className="space-y-2">
-              {filteredEmployees.length === 0 ? (
-                <p>No employees found</p>
-              ) : (
-                filteredEmployees.map((emp) => (
-                  <div
-                    key={emp.id}
-                    className="border p-4 rounded-lg flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium">{emp.name}</p>
-                      <p className="text-sm text-gray-500">{emp.phone}</p>
-                      <p className="text-sm text-gray-500">{emp.email}</p>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleDeleteEmployee(emp.id)}
-                      disabled={loading.employees}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </TabsContent>
+  <div className="flex items-center gap-2 my-4">
+    <Input
+      placeholder="Search employees..."
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      className="w-64"
+    />
+  </div>
+  
+  <div className="border rounded-lg overflow-hidden">
+    <table className="w-full">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="p-3 text-left">Name</th>
+          <th className="p-3 text-left">Phone</th>
+          <th className="p-3 text-left">Email</th>
+          <th className="p-3 text-left">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredEmployees.map((emp) => (
+          <tr key={emp.id} className="border-t hover:bg-gray-50">
+            <td className="p-3">{emp.name}</td>
+            <td className="p-3">{emp.phone}</td>
+            <td className="p-3">{emp.email}</td>
+            <td className="p-3">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleDeleteEmployee(emp.id)}
+              >
+                Delete
+              </Button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</TabsContent>
 
         {/* Checkins Tab */}
         <TabsContent value="checkins">
-          {loading.checkins ? (
-            <div>Loading check-ins...</div>
-          ) : (
-            <div className="space-y-2 mt-4">
-              {checkins.length === 0 ? (
-                <p>No check-ins found</p>
-              ) : (
-                checkins.map((c) => (
-                  <div key={c.id} className="border p-4 rounded-lg">
-                    <p className="font-medium">{c.employee_name}</p>
-                    <p className="text-sm">
-                      {formatDate(c.checkin_date)} at {c.checkin_time}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </TabsContent>
+  <div className="border rounded-lg overflow-hidden mt-4">
+    <table className="w-full">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="p-3 text-left">Employee</th>
+          <th className="p-3 text-left">Date</th>
+          <th className="p-3 text-left">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {checkins.map((c) => (
+          <tr key={c.id} className="border-t hover:bg-gray-50">
+            <td className="p-3">{c.employee_name}</td>
+            <td className="p-3">{formatDate(c.checkin_date)}</td>
+            <td className="p-3">{c.checkin_time}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</TabsContent>
 
         {/* Visitors Tab */}
         <TabsContent value="visitors">
-          {loading.visitors ? (
-            <div>Loading visitors...</div>
-          ) : (
-            <div className="space-y-2 mt-4">
-              {visitors.length === 0 ? (
-                <p>No visitors found</p>
-              ) : (
-                visitors.map((v) => (
-                  <div key={v.id} className="border p-4 rounded-lg">
-                    <p className="font-medium">{v.name}</p>
-                    <p className="text-sm text-gray-500">{v.phone}</p>
-                    <p className="text-sm">
-                      {formatDate(v.checkin_date)} at {v.checkin_time}
-                    </p>
-                    <p className="text-sm text-gray-600">Meeting: {v.whom_to_meet}</p>
-                    <p className="text-sm text-gray-600">Purpose: {v.purpose}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </TabsContent>
+  <div className="border rounded-lg overflow-hidden mt-4">
+    <table className="w-full">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="p-3 text-left">Name</th>
+          <th className="p-3 text-left">Phone</th>
+          <th className="p-3 text-left">Meeting</th>
+          <th className="p-3 text-left">Date/Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {visitors.map((v) => (
+          <tr key={v.id} className="border-t hover:bg-gray-50">
+            <td className="p-3">{v.name}</td>
+            <td className="p-3">{v.phone}</td>
+            <td className="p-3">
+              <div>{v.whom_to_meet}</div>
+              <div className="text-sm text-gray-500">{v.purpose}</div>
+            </td>
+            <td className="p-3">
+              {formatDate(v.checkin_date)} at {v.checkin_time}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</TabsContent>
+
       </Tabs>
     </div>
   );
