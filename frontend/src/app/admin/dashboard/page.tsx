@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
+// Define strict types
 type Employee = {
   id: string;
   name: string;
@@ -14,22 +16,18 @@ type Employee = {
   email: string;
 };
 
-type EmployeeCheckinRaw = {
+type RawEmployeeCheckin = {
   id: string;
   employee_id: string;
   checkin_date: string;
   checkin_time: string;
-  employees: {
-    name: string;
-    phone: string;
-  };
-}[];
+  employee_name: string | null;
+};
 
-type EmployeeCheckin = {
+type FormattedEmployeeCheckin = {
   id: string;
   employee_id: string;
   employee_name: string;
-  employee_phone: string;
   checkin_date: string;
   checkin_time: string;
 };
@@ -46,55 +44,91 @@ type Visitor = {
 
 export default function AdminDashboard() {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [checkins, setCheckins] = useState<EmployeeCheckin[]>([]);
+  const [checkins, setCheckins] = useState<FormattedEmployeeCheckin[]>([]);
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState({
+    employees: true,
+    checkins: true,
+    visitors: true
+  });
 
+  // Fetch all data in parallel
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: empData, error: empErr } = await supabase.from('employees').select('*');
-      if (!empErr) setEmployees(empData as Employee[]);
+    const fetchAllData = async () => {
+      try {
+        setLoading({ employees: true, checkins: true, visitors: true });
+        
+        const [
+          { data: empData, error: empErr },
+          { data: checkinData, error: checkinErr },
+          { data: visitorData, error: visitorErr }
+        ] = await Promise.all([
+          supabase.from('employees').select('*'),
+          supabase.from('employee_checkins')
+            .select('id, employee_id, checkin_date, checkin_time, employee_name'),
+          supabase.from('visitors').select('*')
+        ]);
 
-      const { data: checkinData, error: checkinErr } = await supabase
-        .from('employee_checkins')
-        .select('id, employee_id, checkin_date, checkin_time, employees(name, phone)');
+        if (empErr) throw new Error(`Employee error: ${empErr.message}`);
+        if (checkinErr) throw new Error(`Checkin error: ${checkinErr.message}`);
+        if (visitorErr) throw new Error(`Visitor error: ${visitorErr.message}`);
 
-      if (!checkinErr && checkinData) {
-        const formatted: EmployeeCheckin[] = (checkinData as EmployeeCheckinRaw[]).map((entry) => ({
-          id: entry.id,
-          employee_id: entry.employee_id,
-          employee_name: entry.employees?.name ?? 'Unknown',
-          employee_phone: entry.employees?.phone ?? 'Unknown',
-          checkin_date: entry.checkin_date,
-          checkin_time: entry.checkin_time,
-        }));
-        setCheckins(formatted);
+        setEmployees(empData as Employee[]);
+        setVisitors(visitorData as Visitor[]);
+
+        if (checkinData) {
+          const formattedCheckins = checkinData.map((checkin) => ({
+            id: checkin.id,
+            employee_id: checkin.employee_id,
+            employee_name: checkin.employee_name ?? 'Unknown',
+            checkin_date: checkin.checkin_date,
+            checkin_time: checkin.checkin_time
+          }));
+          setCheckins(formattedCheckins);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to load data');
+      } finally {
+        setLoading({ employees: false, checkins: false, visitors: false });
       }
-
-      const { data: visitorData, error: visitorErr } = await supabase.from('visitors').select('*');
-      if (!visitorErr) setVisitors(visitorData as Visitor[]);
     };
 
-    fetchData();
+    fetchAllData();
   }, []);
 
   const handleDeleteEmployee = async (id: string) => {
-    const { error } = await supabase.from('employees').delete().eq('id', id);
-    if (!error) {
+    try {
+      const { error } = await supabase.from('employees').delete().eq('id', id);
+      
+      if (error) throw error;
+      
+      setEmployees(prev => prev.filter(emp => emp.id !== id));
       toast.success('Employee deleted successfully');
-      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
-    } else {
+    } catch (error) {
+      console.error('Error deleting employee:', error);
       toast.error('Failed to delete employee');
     }
   };
 
-  const filteredEmployees = employees.filter((emp) =>
+  const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      
       <Tabs defaultValue="employees">
         <TabsList>
           <TabsTrigger value="employees">Employees</TabsTrigger>
@@ -112,55 +146,83 @@ export default function AdminDashboard() {
               className="w-64"
             />
           </div>
-          <div className="space-y-2">
-            {filteredEmployees.map((emp) => (
-              <div
-                key={emp.id}
-                className="border p-4 rounded-lg flex items-center justify-between"
-              >
-                <div>
-                  <p className="font-medium">{emp.name}</p>
-                  <p className="text-sm text-gray-500">{emp.phone}</p>
-                  <p className="text-sm text-gray-500">{emp.email}</p>
-                </div>
-                <Button variant="destructive" onClick={() => handleDeleteEmployee(emp.id)}>
-                  Delete
-                </Button>
-              </div>
-            ))}
-          </div>
+          
+          {loading.employees ? (
+            <div>Loading employees...</div>
+          ) : (
+            <div className="space-y-2">
+              {filteredEmployees.length === 0 ? (
+                <p>No employees found</p>
+              ) : (
+                filteredEmployees.map((emp) => (
+                  <div
+                    key={emp.id}
+                    className="border p-4 rounded-lg flex items-center justify-between"
+                  >
+                    <div>
+                      <p className="font-medium">{emp.name}</p>
+                      <p className="text-sm text-gray-500">{emp.phone}</p>
+                      <p className="text-sm text-gray-500">{emp.email}</p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleDeleteEmployee(emp.id)}
+                      disabled={loading.employees}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* Checkins Tab */}
         <TabsContent value="checkins">
-          <div className="space-y-2 mt-4">
-            {checkins.map((c) => (
-              <div key={c.id} className="border p-4 rounded-lg">
-                <p className="font-medium">{c.employee_name}</p>
-                <p className="text-sm text-gray-500">{c.employee_phone}</p>
-                <p className="text-sm">
-                  {c.checkin_date} at {c.checkin_time}
-                </p>
-              </div>
-            ))}
-          </div>
+          {loading.checkins ? (
+            <div>Loading check-ins...</div>
+          ) : (
+            <div className="space-y-2 mt-4">
+              {checkins.length === 0 ? (
+                <p>No check-ins found</p>
+              ) : (
+                checkins.map((c) => (
+                  <div key={c.id} className="border p-4 rounded-lg">
+                    <p className="font-medium">{c.employee_name}</p>
+                    <p className="text-sm">
+                      {formatDate(c.checkin_date)} at {c.checkin_time}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* Visitors Tab */}
         <TabsContent value="visitors">
-          <div className="space-y-2 mt-4">
-            {visitors.map((v) => (
-              <div key={v.id} className="border p-4 rounded-lg">
-                <p className="font-medium">{v.name}</p>
-                <p className="text-sm text-gray-500">{v.phone}</p>
-                <p className="text-sm">
-                  {v.checkin_date} at {v.checkin_time}
-                </p>
-                <p className="text-sm text-gray-600">Whom to Meet: {v.whom_to_meet}</p>
-                <p className="text-sm text-gray-600">Purpose: {v.purpose}</p>
-              </div>
-            ))}
-          </div>
+          {loading.visitors ? (
+            <div>Loading visitors...</div>
+          ) : (
+            <div className="space-y-2 mt-4">
+              {visitors.length === 0 ? (
+                <p>No visitors found</p>
+              ) : (
+                visitors.map((v) => (
+                  <div key={v.id} className="border p-4 rounded-lg">
+                    <p className="font-medium">{v.name}</p>
+                    <p className="text-sm text-gray-500">{v.phone}</p>
+                    <p className="text-sm">
+                      {formatDate(v.checkin_date)} at {v.checkin_time}
+                    </p>
+                    <p className="text-sm text-gray-600">Meeting: {v.whom_to_meet}</p>
+                    <p className="text-sm text-gray-600">Purpose: {v.purpose}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
