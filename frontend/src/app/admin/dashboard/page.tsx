@@ -217,13 +217,11 @@ export default function AdminDashboard() {
       </thead>
       <tbody>
         {visitors.map((v) => (
-          <tr key={v.id} className="border-t hover:bg-gray-50">
+           <tr key={v.id} className="border-t hover:bg-gray-50">
             <td className="p-3">{v.name}</td>
             <td className="p-3">{v.phone}</td>
-            <td className="p-3">
-              <div>{v.whom_to_meet}</div>
-              <div className="text-sm text-gray-500">{v.purpose}</div>
-            </td>
+            <td className="p-3">{v.whom_to_meet}</td>
+            <td className="p-3">{v.purpose}</td>
             <td className="p-3">
               {formatDate(v.checkin_date)} at {v.checkin_time}
             </td>
